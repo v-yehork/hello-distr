@@ -1,0 +1,70 @@
+# note: the compose project name will be overridden by the distr agent, to create a unique name
+name: hello-distr
+
+# note: only share non-sensitive data to avoid accidental exposure of sensitive values (like passwords) to other containers
+x-shared-env: &shared-env
+  HELLO_DISTR_HOST: ${HELLO_DISTR_HOST}
+  HELLO_DISTR_DB_NAME: ${HELLO_DISTR_DB_NAME}
+
+services:
+  postgres:
+    image: 'postgres:17.3-alpine3.20'
+    environment:
+      <<: *shared-env
+      POSTGRES_USER: ${HELLO_DISTR_DB_USER:?error}
+      POSTGRES_PASSWORD: ${HELLO_DISTR_DB_PASSWORD:?error}
+      POSTGRES_DB: ${HELLO_DISTR_DB_NAME:?error}
+    restart: unless-stopped
+    healthcheck:
+      test: pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      start_interval: 1s
+      interval: 5s
+      retries: 6
+    volumes:
+      - 'postgres:/var/lib/postgresql/data/'
+    networks:
+      - app_network
+
+  backend:
+    image: hello-distr-backend
+    environment:
+      <<: *shared-env
+      DB_URL: postgresql://${HELLO_DISTR_DB_USER:?error}:${HELLO_DISTR_DB_PASSWORD:?error}@postgres/${HELLO_DISTR_DB_NAME:?error}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  frontend:
+    image: hello-distr-frontend
+    environment:
+      <<: *shared-env
+      NEXT_PUBLIC_API_URL: 'http://${HELLO_DISTR_HOST:?error}/api'
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app_network
+
+  proxy:
+    image: hello-distr-proxy
+    environment:
+      <<: *shared-env
+      HOST: ${HELLO_DISTR_HOST:?error}
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - app_network
+
+volumes:
+  postgres:
+
+networks:
+  app_network:
+    driver: bridge

@@ -3,12 +3,17 @@ import { Snippet } from "@heroui/snippet";
 import { Code } from "@heroui/code";
 import { button as buttonStyles } from "@heroui/theme";
 
-import { buildConfig } from "@/buildconfig";
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
 import { GithubIcon } from "@/components/icons";
+import { getApiUrl } from "@/config/api";
 
-export default function Home() {
+export default async function Home() {
+  const response = await fetch(`${getApiUrl()}/latest-message`, {
+    cache: "no-store",
+  });
+  const output = await response.text();
+
   return (
     <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
       <div className="inline-block max-w-xl text-center justify-center">
@@ -44,8 +49,7 @@ export default function Home() {
       <div className="mt-8">
         <Snippet hideCopyButton hideSymbol variant="bordered">
           <span>
-            hello-distr Version:{" "}
-            <Code color="primary">{buildConfig.version}</Code>
+            Latest Message from API: <Code color="primary">{output}</Code>
           </span>
         </Snippet>
       </div>
