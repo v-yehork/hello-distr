@@ -5,6 +5,7 @@
   ],
   "packageRules": [
     {
+      "matchManagers": ["npm", "github-actions", "pip_requirements"],
       "automerge": true
     }
   ]
